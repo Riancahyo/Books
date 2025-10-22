@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>E-Book</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="{{ asset('images/LogoAdmin.png') }}">
 </head>
 <body>
     <div class="bg-white">
@@ -15,7 +16,7 @@
                 <div class="flex items-center justify-between h-16 lg:h-20">
                     <div class="flex-shrink-0">
                         <a href="#" title="E-Book Library" class="flex">
-                            <img class="w-auto h-10" src="{{ asset('storage/img/logo.png') }}" alt="E-Book Library" />
+                            <img class="w-auto h-12" src="{{ asset('images/LogoAdmin.png') }}" alt="E-Book Library" />
                         </a>
                     </div>
     
@@ -42,7 +43,7 @@
                         <div class="hidden lg:flex lg:items-center lg:space-x-3">
                             <div class="relative">
                                 <button onclick="toggleDropdown()" class="flex items-center space-x-2 text-black hover:text-opacity-80">
-                                    <span class="text-base font-semibold">{{ auth()->user()->name }}</span>
+                                    <span class="text-base font-semibold">{{ session('real_name', auth()->user()->name) }}</span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>

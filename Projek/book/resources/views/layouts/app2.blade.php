@@ -6,6 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>@yield('title', 'E-Book Library')</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ asset('images/LogoAdmin.png') }}">
 </head>
 <body class="bg-white">
     <div class="bg-white">

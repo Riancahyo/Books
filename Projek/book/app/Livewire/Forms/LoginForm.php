@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Helpers\SimpleEncryption;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,17 +32,50 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
-        // Coba login dengan kredensial yang diberikan
-        if (!Auth::attempt($this->only(['email', 'password']), $this->remember)) {
-            RateLimiter::hit($this->throttleKey());
+        // Ambil user berdasarkan email
+        $user = \App\Models\User::where('email', $this->email)->first();
 
+        if (!$user) {
+            RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'form.email' => trans('auth.failed'),
             ]);
         }
 
-        // Pastikan pengguna memiliki peran yang sesuai
-        $user = Auth::user(); // Ambil data pengguna yang sedang login
+        // === 🔐 PERBAIKAN: Dekripsi password dari database, lalu bandingkan ===
+        try {
+            if (empty($user->pin)) {
+                throw new \Exception('PIN tidak ditemukan');
+            }
+
+            // Dekripsi password yang tersimpan di database
+            $decryptedPassword = SimpleEncryption::decrypt($user->password, $user->pin);
+
+            // Bandingkan dengan input password
+            if ($decryptedPassword !== $this->password) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'form.password' => 'Password salah.',
+                ]);
+            }
+
+        } catch (\Throwable $e) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'form.password' => 'Terjadi kesalahan saat verifikasi password.',
+            ]);
+        }
+
+        // Jika password cocok → login manual
+        Auth::login($user, $this->remember);
+
+        // === 🔓 Dekripsi nama untuk ditampilkan di session ===
+        try {
+            $decryptedName = SimpleEncryption::decrypt($user->name, $user->pin);
+            session(['real_name' => $decryptedName]);
+        } catch (\Throwable $e) {
+            session(['real_name' => $user->name]);
+        }
 
         // Ambil role_id dari tabel model_has_roles
         $roleId = DB::table('model_has_roles')
@@ -49,9 +83,9 @@ class LoginForm extends Form
             ->where('model_type', get_class($user))
             ->value('role_id');
 
-        // Validasi role berdasarkan role_id
-        if (!in_array($roleId, [1, 2])) { // 1 = admin, 2 = user
-            Auth::logout(); // Logout pengguna jika role tidak sesuai
+        // Validasi role (1 = admin, 2 = user)
+        if (!in_array($roleId, [1, 2])) {
+            Auth::logout();
             throw ValidationException::withMessages([
                 'form.email' => 'Access denied: Invalid role.',
             ]);
