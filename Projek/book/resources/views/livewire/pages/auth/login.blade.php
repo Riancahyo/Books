@@ -13,7 +13,6 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public string $email = '';
     public string $password = '';
-    public string $pin = '';   // ✅ Tambah properti pin
     public bool $remember = false;
 
     public function login(): void
@@ -21,7 +20,6 @@ new #[Layout('layouts.guest')] class extends Component
         $this->validate([
             'email' => 'required|email',
             'password' => 'required|string',
-            'pin' => 'required|digits:6', // ✅ Validasi pin 6 digit
         ]);
 
         // Cari user berdasarkan email
@@ -35,27 +33,35 @@ new #[Layout('layouts.guest')] class extends Component
         try {
             Log::info('=== LOGIN DEBUG ===');
             Log::info('Email: ' . $user->email);
-            Log::info('Input PIN: ' . $this->pin);
+
+            // Ambil PIN dari database
+            $pin = $user->pin; 
+
+            if (empty($pin)) {
+                $this->addError('password', 'PIN tidak ditemukan di akun ini.');
+                return;
+            }
+
+            Log::info('PIN (from DB): ' . $pin);
             Log::info('Encrypted Password (DB): ' . substr($user->password, 0, 30) . '...');
 
-            // ✅ Gunakan PIN input user (bukan dari DB)
-            $decryptedPassword = SimpleEncryption::decrypt($user->password, $this->pin);
+            // Dekripsi password menggunakan PIN dari DB
+            $decryptedPassword = SimpleEncryption::decrypt($user->password, $pin);
 
             Log::info('Decrypted Password: ' . $decryptedPassword);
             Log::info('Password Match: ' . ($decryptedPassword === $this->password ? 'YES' : 'NO'));
 
             if ($decryptedPassword !== $this->password) {
-                $this->addError('password', 'Password atau PIN salah.');
+                $this->addError('password', 'Password salah.');
                 return;
             }
 
-            // Login manual (tanpa Hash)
             Auth::login($user, $this->remember);
             Session::regenerate();
 
-            // ✅ Dekripsi nama untuk disimpan ke session
+            // Dekripsi nama untuk disimpan ke session
             try {
-                $decryptedName = SimpleEncryption::decrypt($user->name, $this->pin);
+                $decryptedName = SimpleEncryption::decrypt($user->name, $pin);
                 session(['real_name' => $decryptedName]);
                 Log::info('Decrypted Name: ' . $decryptedName);
             } catch (\Throwable $e) {
@@ -129,14 +135,6 @@ new #[Layout('layouts.guest')] class extends Component
             </button>
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <!-- ✅ PIN -->
-        <div class="mt-4">
-            <x-input-label for="pin" :value="__('PIN (6 digit)')" />
-            <x-text-input wire:model="pin" id="pin" class="block mt-1 w-full"
-                type="password" name="pin" required minlength="6" maxlength="6" />
-            <x-input-error :messages="$errors->get('pin')" class="mt-2" />
         </div>
 
         <!-- Remember Me -->

@@ -4,27 +4,27 @@ namespace App\Helpers;
 
 class SimpleEncryption
 {
-    // ======== ENCRYPT ========
+    // ENCRYPT
     public static function encrypt($text, $pin)
     {
         if (empty($pin)) {
             throw new \Exception('PIN tidak boleh kosong!');
         }
 
-        // --- Lapisan 1: Scytale Cipher ---
+        // Lapisan 1: Scytale Cipher 
         $scytale = self::scytaleEncrypt($text, strlen($pin));
 
-        // --- Lapisan 2: Vigenere Cipher (ASCII) ---
+        // Lapisan 2: Vigenere Cipher (ASCII) 
         $vigenere = self::vigenereEncrypt($scytale, $pin);
 
-        // --- Lapisan 3: Columnar Transposition Cipher ---
+        // Lapisan 3: Columnar Transposition Cipher 
         $columnar = self::columnarEncrypt($vigenere, $pin);
 
         // Encode agar aman disimpan di database
         return base64_encode($columnar);
     }
 
-    // ======== DECRYPT ========
+    // DECRYPT 
     public static function decrypt($encodedText, $pin)
     {
         if (empty($pin)) {
@@ -33,7 +33,6 @@ class SimpleEncryption
 
         $decoded = base64_decode($encodedText);
 
-        // Urutan kebalikan: Columnar → Vigenere → Scytale
         $step1 = self::columnarDecrypt($decoded, $pin);
         $step2 = self::vigenereDecrypt($step1, $pin);
         $step3 = self::scytaleDecrypt($step2, strlen($pin));
@@ -41,7 +40,7 @@ class SimpleEncryption
         return $step3;
     }
 
-    // =================== SCYTALE CIPHER ===================
+    // SCYTALE CIPHER 
     private static function scytaleEncrypt($text, $key)
     {
         $cols = $key;
@@ -54,7 +53,7 @@ class SimpleEncryption
                 if ($index < strlen($text)) {
                     $matrix[$r][$c] = $text[$index++];
                 } else {
-                    $matrix[$r][$c] = '_'; // padding
+                    $matrix[$r][$c] = '_'; 
                 }
             }
         }
@@ -84,7 +83,7 @@ class SimpleEncryption
             }
         }
 
-        // ✅ Rekonstruksi urutan baris kembali ke teks asli
+        // Rekonstruksi urutan baris kembali ke teks asli
         $result = '';
         for ($r = 0; $r < $rows; $r++) {
             for ($c = 0; $c < $cols; $c++) {
@@ -95,7 +94,7 @@ class SimpleEncryption
         return rtrim($result, '_');
     }
 
-    // ================ VIGENERE (ASCII) ====================
+    // VIGENERE (ASCII) 
     private static function vigenereEncrypt($text, $key)
     {
         $res = '';
@@ -114,7 +113,7 @@ class SimpleEncryption
         return $res;
     }
 
-    // ============ COLUMNAR TRANSPOSITION ==================
+    // COLUMNAR TRANSPOSITION 
     private static function columnarEncrypt($text, $key)
     {
         $keyLen = strlen($key);

@@ -5,24 +5,53 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
+use App\Helpers\SimpleEncryption;
 
 new class extends Component
 {
     public string $name = '';
     public string $email = '';
+    public string $hiddenPassword = '********';
+    public bool $showPinInput = false;
+    public string $pin = '';
 
-    /**
-     * Mount the component.
-     */
     public function mount(): void
     {
-        $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        $user = Auth::user();
+
+        // ✅ Dekripsi nama sebelum ditampilkan
+        try {
+            $this->name = SimpleEncryption::decrypt($user->name, $user->pin);
+        } catch (\Exception $e) {
+            $this->name = $user->name;
+        }
+
+        $this->email = $user->email;
     }
 
-    /**
-     * Update the profile information for the currently authenticated user.
-     */
+    public function showPinField()
+    {
+        $this->showPinInput = true;
+    }
+
+    public function revealPassword()
+    {
+        $user = Auth::user();
+
+        if (empty($this->pin)) {
+            $this->dispatch('alert', message: 'Masukkan PIN terlebih dahulu!');
+            return;
+        }
+
+        try {
+            $decrypted = SimpleEncryption::decrypt($user->password, $this->pin);
+            $this->hiddenPassword = $decrypted;
+            $this->showPinInput = false;
+        } catch (\Exception $e) {
+            $this->dispatch('alert', message: 'PIN salah atau gagal dekripsi!');
+        }
+    }
+
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
@@ -31,6 +60,12 @@ new class extends Component
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
         ]);
+
+        try {
+            $validated['name'] = SimpleEncryption::encrypt($validated['name'], $user->pin);
+        } catch (\Exception $e) {
+            $validated['name'] = $validated['name'];
+        }
 
         $user->fill($validated);
 
@@ -43,16 +78,12 @@ new class extends Component
         $this->dispatch('profile-updated', name: $user->name);
     }
 
-    /**
-     * Send an email verification notification to the current user.
-     */
     public function sendVerification(): void
     {
         $user = Auth::user();
 
         if ($user->hasVerifiedEmail()) {
             $this->redirectIntended(default: route('dashboard', absolute: false));
-
             return;
         }
 
@@ -60,7 +91,8 @@ new class extends Component
 
         Session::flash('status', 'verification-link-sent');
     }
-}; ?>
+};
+?>
 
 <section>
     <header>
@@ -104,6 +136,25 @@ new class extends Component
             @endif
         </div>
 
+        <!-- 🔒 Password Field -->
+        <div>
+            <x-input-label for="password" :value="__('Password')" />
+            <x-text-input id="password" type="text" wire:model="hiddenPassword" readonly class="mt-1 block w-full bg-gray-100" />
+            
+            <button type="button" wire:click="showPinField" class="mt-2 text-sm text-blue-600 underline">
+                {{ __('Lihat Password') }}
+            </button>
+
+            @if ($showPinInput)
+                <div class="mt-2 space-y-2">
+                    <x-text-input type="password" wire:model="pin" placeholder="Masukkan PIN Anda" class="block w-full border-gray-300 rounded-md" />
+                    <button type="button" wire:click="revealPassword" class="px-3 py-1 bg-blue-600 text-white rounded">
+                        {{ __('Konfirmasi PIN') }}
+                    </button>
+                </div>
+            @endif
+        </div>
+
         <div class="flex items-center gap-4">
             <button type="submit"
                 class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md 
@@ -118,4 +169,10 @@ new class extends Component
             </x-action-message>
         </div>
     </form>
+
+    <script>
+        document.addEventListener('livewire:load', () => {
+            Livewire.on('alert', data => alert(data.message));
+        });
+    </script>
 </section>

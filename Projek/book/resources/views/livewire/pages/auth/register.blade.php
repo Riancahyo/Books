@@ -17,7 +17,7 @@ new #[Layout('layouts.guest')] class extends Component
     public string $password = '';
     public string $password_confirmation = '';
     public string $pin = '';
-    public string $role = 'user'; // Default role is user
+    public string $role = 'user'; 
 
     /**
      * Handle an incoming registration request.
