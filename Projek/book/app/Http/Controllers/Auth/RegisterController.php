@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Helpers\TripleEncryption;
+use App\Helpers\SimpleEncryption;
 
 class RegisterController extends Controller
 {
@@ -25,7 +25,7 @@ class RegisterController extends Controller
             'role' => ['nullable', 'string'],
         ]);
 
-        $encryptedPassword = TripleEncryption::encrypt($request->password, $request->pin);
+        $encryptedPassword = SimpleEncryption::encrypt($request->password, $request->pin);
 
         // Membuat user baru
         $user = User::create([
